@@ -31,7 +31,7 @@ def _keyboard_on_press(key):
                 if Settings.ENABLED:
                     Settings.ENABLED = False
                     mouse.Controller().release(mouse.Button.left)
-                    print(f"{Colors.GREEN}- Cobblestone miner disabled{Colors.RESET}")
+                    print(f"{Colors.RED}- Cobblestone miner disabled{Colors.RESET}")
                 else:
                     enable()
                     print(f"{Colors.GREEN}- Cobblestone miner enabled{Colors.RESET}")
