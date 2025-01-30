@@ -8,7 +8,7 @@ import time
 class Settings:
     INVENTORY_SCROLLER = True # Set this to True if you'd like to use multiple pickaxes.
     INVENTORY_PICKAXE_SLOT = "2-8" # Inventory slots which contains pickaxes, this example shows: 3, 4, 5, and 6 having pickaxes equipped
-    INVENTORY_SCROLLER_SLEEP = 10
+    INVENTORY_SCROLLER_SLEEP = 5
     KEY_VK = None
     ENABLED = False
 
@@ -45,12 +45,14 @@ def send_key(key_char: str):
 def hold_left_click():
     win32api.SendMessage(minecraft_window, win32con.WM_LBUTTONDOWN, 0, 0)
 
+def release_left_click():
+    win32api.SendMessage(minecraft_window, win32con.WM_LBUTTONUP, 0, 0)
+
 def inventory_scroller():
     key1, key2 = Settings.INVENTORY_PICKAXE_SLOT.split("-", 1)
     key1 = int(key1)
     key2 = int(key2)
 
-    keyboard_controller = keyboard.Controller()
     last_pressed = time.time()
 
     print(f"- {Colors.GREEN}Inventory scroller started{Colors.RESET}")
@@ -83,7 +85,7 @@ def _keyboard_on_press(key):
             if key.vk == Settings.KEY_VK:
                 if Settings.ENABLED:
                     Settings.ENABLED = False
-                    mouse.Controller().release(mouse.Button.left)
+                    release_left_click()
                     print(f"- {Colors.RED}Cobblestone miner disabled{Colors.RESET}")
                 else:
                     Settings.ENABLED = True
@@ -94,6 +96,25 @@ def _keyboard_on_press(key):
 
                     print(f"- {Colors.GREEN}Cobblestone miner enabled{Colors.RESET}")
 
+def monitor_minecraft_focus():
+    last_hwnd = None
+
+    while True:
+        active_hwnd = win32gui.GetForegroundWindow()
+
+        if active_hwnd == last_hwnd:
+            time.sleep(0.1)
+            continue
+
+        print(f"- {Colors.BLUE}New Window Focus: {active_hwnd}{Colors.RESET}")
+
+        if any([active_hwnd == minecraft_window, last_hwnd == minecraft_window]):
+            print(f"- {Colors.BLUE}Reinitializing left click holder{Colors.RESET}")
+            hold_left_click()
+
+        last_hwnd = active_hwnd
+        time.sleep(0.01)
+
 def main():
     print(f"- {Colors.PURPLE}Initializing polyAutoclic (cobblestone miner)...{Colors.RESET}")
     time.sleep(1)
@@ -103,6 +124,7 @@ def main():
 
     keyboard_listener = keyboard.Listener(on_press=_keyboard_on_press)
     keyboard_listener.start()
+    threading.Thread(target=monitor_minecraft_focus, daemon=True).start()
 
     print(f"+ {Colors.GREEN}Press the activate button.{Colors.RESET}")
     input(f"- {Colors.PURPLE}FOCUS HERE AND PRESS <ENTER> OR <CTRL+C> TO EXIT{Colors.RESET}\n\n")
