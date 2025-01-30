@@ -58,12 +58,7 @@ def inventory_scroller():
     print(f"- {Colors.GREEN}Inventory scroller started{Colors.RESET}")
 
     while Settings.ENABLED == True:
-        for i in range(key1, key2 + 1):
-            while Settings.ENABLED == True:
-                if (time.time() - last_pressed) >= Settings.INVENTORY_SCROLLER_SLEEP:
-                    break
-                time.sleep(0.01)
-            
+        for i in range(key1, key2 + 1):            
             if not Settings.ENABLED:
                 break
 
@@ -71,6 +66,11 @@ def inventory_scroller():
 
             print(f"- {Colors.CYAN}Pressed key: {i}{Colors.RESET}")
             last_pressed = time.time()
+
+            while Settings.ENABLED == True:
+                if (time.time() - last_pressed) >= Settings.INVENTORY_SCROLLER_SLEEP:
+                    break
+                time.sleep(0.01)
 
     print(f"- {Colors.RED}Inventory scroller stopped{Colors.RESET}")
 
@@ -84,11 +84,15 @@ def _keyboard_on_press(key):
 
             if key.vk == Settings.KEY_VK:
                 if Settings.ENABLED:
+                    # Stop cobblestone miner
                     Settings.ENABLED = False
                     release_left_click()
                     print(f"- {Colors.RED}Cobblestone miner disabled{Colors.RESET}")
                 else:
+                    # Start cobblestone miner
                     Settings.ENABLED = True
+
+                    threading.Thread(target=monitor_minecraft_focus, daemon=True).start()
                     threading.Thread(target=hold_left_click, daemon=True).start()
 
                     if Settings.INVENTORY_SCROLLER:
@@ -96,24 +100,40 @@ def _keyboard_on_press(key):
 
                     print(f"- {Colors.GREEN}Cobblestone miner enabled{Colors.RESET}")
 
+def _mouse_on_click(x, y, button, pressed):
+    if not Settings.ENABLED:
+        return
+    
+    active_hwnd = win32gui.GetForegroundWindow()
+
+    if all([button == mouse.Button.left, active_hwnd == minecraft_window, pressed == False]):
+        time.sleep(0.5)
+        hold_left_click()
+        print(f"- {Colors.BLUE}Holding left click{Colors.RESET}")
+
 def monitor_minecraft_focus():
     last_hwnd = None
 
-    while True:
+    print(f"- {Colors.GREEN}Started window monitor{Colors.RESET}")
+
+    while Settings.ENABLED:
         active_hwnd = win32gui.GetForegroundWindow()
 
         if active_hwnd == last_hwnd:
             time.sleep(0.1)
             continue
 
-        print(f"- {Colors.BLUE}New Window Focus: {active_hwnd}{Colors.RESET}")
+        if last_hwnd != None:
+            print(f"- {Colors.BLUE}New Window Focus: {active_hwnd}{Colors.RESET}")
 
-        if any([active_hwnd == minecraft_window, last_hwnd == minecraft_window]):
-            print(f"- {Colors.BLUE}Reinitializing left click holder{Colors.RESET}")
-            hold_left_click()
+            if any([active_hwnd == minecraft_window, last_hwnd == minecraft_window]):
+                print(f"- {Colors.BLUE}Reinitializing left click holder{Colors.RESET}")
+                hold_left_click()
 
         last_hwnd = active_hwnd
         time.sleep(0.01)
+    
+    print(f"- {Colors.RED}Stopped window monitor{Colors.RESET}")
 
 def main():
     print(f"- {Colors.PURPLE}Initializing polyAutoclic (cobblestone miner)...{Colors.RESET}")
@@ -124,6 +144,10 @@ def main():
 
     keyboard_listener = keyboard.Listener(on_press=_keyboard_on_press)
     keyboard_listener.start()
+
+    mouse_listener = mouse.Listener(on_click=_mouse_on_click)
+    mouse_listener.start()
+
     threading.Thread(target=monitor_minecraft_focus, daemon=True).start()
 
     print(f"+ {Colors.GREEN}Press the activate button.{Colors.RESET}")
