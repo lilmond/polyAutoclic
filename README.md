@@ -1,4 +1,4 @@
 # polyAutoclic
 Ultra fast autoclicker by holding a button,
 
-![image](https://github.com/user-attachments/assets/e3174dda-ede7-456f-b6e8-5aafaa23ad94)
+https://github.com/user-attachments/assets/ec8d0f98-5bec-482e-b827-3387772b51c5
