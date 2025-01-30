@@ -1,14 +1,14 @@
-# Cobblestone Miner
-# Version: 1.1.0
-
 from pynput import keyboard, mouse
 import threading
+import win32api
+import win32gui
+import win32con
 import time
 
 class Settings:
     INVENTORY_SCROLLER = True # Set this to True if you'd like to use multiple pickaxes.
-    INVENTORY_PICKAXE_SLOT = "3-6" # Inventory slots which contains pickaxes, this example shows: 3, 4, 5, and 6 having pickaxes equipped
-    INVENTORY_SCROLLER_SLEEP = 1
+    INVENTORY_PICKAXE_SLOT = "2-8" # Inventory slots which contains pickaxes, this example shows: 3, 4, 5, and 6 having pickaxes equipped
+    INVENTORY_SCROLLER_SLEEP = 10
     KEY_VK = None
     ENABLED = False
 
@@ -21,8 +21,29 @@ class Colors:
     CYAN = "\u001b[36;1m"
     RESET = "\u001b[0;0m"
 
-def enable():
-    mouse.Controller().press(mouse.Button.left)
+def get_minecraft_window():
+    def _enum_window_callback(hwnd, lparam):
+        window_title = win32gui.GetWindowText(hwnd)
+        if "Minecraft" in window_title:
+            lparam[0] = hwnd
+    
+    hwnd = [None]
+    win32gui.EnumWindows(_enum_window_callback, hwnd)
+    return hwnd[0]
+
+minecraft_window = get_minecraft_window()
+
+if not minecraft_window:
+    print(f"Minecraft window not found, please launch Minecraft before running this script.")
+    exit()
+
+def send_key(key_char: str):
+    key_char = str(key_char)
+    key_vk = ord(key_char.upper())
+    win32api.SendMessage(minecraft_window, win32con.WM_KEYDOWN, key_vk, 0)
+
+def hold_left_click():
+    win32api.SendMessage(minecraft_window, win32con.WM_LBUTTONDOWN, 0, 0)
 
 def inventory_scroller():
     key1, key2 = Settings.INVENTORY_PICKAXE_SLOT.split("-", 1)
@@ -44,8 +65,7 @@ def inventory_scroller():
             if not Settings.ENABLED:
                 break
 
-            keyboard_controller.press(keyboard.KeyCode.from_char(i))
-            keyboard_controller.release(keyboard.KeyCode.from_char(i))
+            send_key(i)
 
             print(f"- {Colors.CYAN}Pressed key: {i}{Colors.RESET}")
             last_pressed = time.time()
@@ -67,7 +87,7 @@ def _keyboard_on_press(key):
                     print(f"- {Colors.RED}Cobblestone miner disabled{Colors.RESET}")
                 else:
                     Settings.ENABLED = True
-                    threading.Thread(target=enable, daemon=True).start()
+                    threading.Thread(target=hold_left_click, daemon=True).start()
 
                     if Settings.INVENTORY_SCROLLER:
                         threading.Thread(target=inventory_scroller, daemon=True).start()
